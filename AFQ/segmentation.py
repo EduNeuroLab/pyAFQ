@@ -55,7 +55,7 @@ class Segmentation:
                  prob_threshold=0,
                  rng=None,
                  return_idx=False,
-                 filter_by_endpoints=True,
+                 filter_by_endpoints=False,
                  dist_to_aal=4,
                  save_intermediates=None):
         """
@@ -462,17 +462,17 @@ class Segmentation:
             for sl_idx in tqdm(idx_above_prob[0]):
                 sl = tg.streamlines[sl_idx]
                 if fiber_probabilities[sl_idx] > self.prob_threshold:
-                    if crosses_midline is not None:
-                        if self.crosses[sl_idx]:
-                            # This means that the streamline does
-                            # cross the midline:
-                            if crosses_midline:
-                                # This is what we want, keep going
-                                pass
-                            else:
-                                # This is not what we want,
-                                # skip to next streamline
-                                continue
+                    # if crosses_midline is not None:
+                    #     if self.crosses[sl_idx]:
+                    #         # This means that the streamline does
+                    #         # cross the midline:
+                    #         if crosses_midline:
+                    #             # This is what we want, keep going
+                    #             pass
+                    #         else:
+                    #             # This is not what we want,
+                    #             # skip to next streamline
+                    #             continue
 
                     is_close, dist = \
                         self._check_sl_with_inclusion(sl,
