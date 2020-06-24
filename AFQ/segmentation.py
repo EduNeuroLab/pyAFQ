@@ -474,20 +474,20 @@ class Segmentation:
                     #             # skip to next streamline
                     #             continue
 
-                    is_close, dist = \
-                        self._check_sl_with_inclusion(sl,
-                                                      include_roi,
-                                                      tol)
+                    # is_close, dist = \
+                    #     self._check_sl_with_inclusion(sl,
+                    #                                   include_roi,
+                    #                                   tol)
                     # if is_close:
                     #     is_far = \
                     #         self._check_sl_with_exclusion(sl,
                     #                                       exclude_roi,
                     #                                       tol)
                     #     if is_far:
-                    min_dist_coords[sl_idx, bundle_idx, 0] =\
-                        np.argmin(dist[0], 0)[0]
-                    min_dist_coords[sl_idx, bundle_idx, 1] =\
-                        np.argmin(dist[1], 0)[0]
+                    # min_dist_coords[sl_idx, bundle_idx, 0] =\
+                    #     np.argmin(dist[0], 0)[0]
+                    # min_dist_coords[sl_idx, bundle_idx, 1] =\
+                    #     np.argmin(dist[1], 0)[0]
                     streamlines_in_bundles[sl_idx, bundle_idx] =\
                         fiber_probabilities[sl_idx]
             self.logger.info(
@@ -503,7 +503,7 @@ class Segmentation:
             out_idx = out_idx[possible_fibers]
 
         streamlines_in_bundles = streamlines_in_bundles[possible_fibers]
-        min_dist_coords = min_dist_coords[possible_fibers]
+        # min_dist_coords = min_dist_coords[possible_fibers]
         bundle_choice = np.argmax(streamlines_in_bundles, -1)
 
         # We do another round through, so that we can orient all the
@@ -525,12 +525,12 @@ class Segmentation:
             # assignment:
             select_sl = list(tg.streamlines[select_idx])
             # Sub-sample min_dist_coords:
-            min_dist_coords_bundle = min_dist_coords[select_idx]
-            for idx in range(len(select_sl)):
-                min0 = min_dist_coords_bundle[idx, bundle_idx, 0]
-                min1 = min_dist_coords_bundle[idx, bundle_idx, 1]
-                if min0 > min1:
-                    select_sl[idx] = select_sl[idx][::-1]
+            # min_dist_coords_bundle = min_dist_coords[select_idx]
+            # for idx in range(len(select_sl)):
+            #     min0 = min_dist_coords_bundle[idx, bundle_idx, 0]
+            #     min1 = min_dist_coords_bundle[idx, bundle_idx, 1]
+            #     if min0 > min1:
+            #         select_sl[idx] = select_sl[idx][::-1]
 
             # Set this to StatefulTractogram object for filtering/output:
             select_sl = StatefulTractogram(select_sl, self.img, Space.VOX)
