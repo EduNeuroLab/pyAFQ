@@ -474,10 +474,10 @@ class Segmentation:
                     #             # skip to next streamline
                     #             continue
 
-                    # is_close, dist = \
-                    #     self._check_sl_with_inclusion(sl,
-                    #                                   include_roi,
-                    #                                   tol)
+                    is_close, dist = \
+                        self._check_sl_with_inclusion(sl,
+                                                      include_roi,
+                                                      tol)
                     # if is_close:
                     #     is_far = \
                     #         self._check_sl_with_exclusion(sl,
