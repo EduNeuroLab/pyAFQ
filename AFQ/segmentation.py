@@ -474,22 +474,22 @@ class Segmentation:
                     #             # skip to next streamline
                     #             continue
 
-                    is_close, dist = \
-                        self._check_sl_with_inclusion(sl,
-                                                      include_roi,
-                                                      tol)
-                    if is_close:
-                        is_far = \
-                            self._check_sl_with_exclusion(sl,
-                                                          exclude_roi,
-                                                          tol)
-                        if is_far:
-                            min_dist_coords[sl_idx, bundle_idx, 0] =\
-                                np.argmin(dist[0], 0)[0]
-                            min_dist_coords[sl_idx, bundle_idx, 1] =\
-                                np.argmin(dist[1], 0)[0]
-                            streamlines_in_bundles[sl_idx, bundle_idx] =\
-                                fiber_probabilities[sl_idx]
+                    # is_close, dist = \
+                    #     self._check_sl_with_inclusion(sl,
+                    #                                   include_roi,
+                    #                                   tol)
+                    # if is_close:
+                    #     is_far = \
+                    #         self._check_sl_with_exclusion(sl,
+                    #                                       exclude_roi,
+                    #                                       tol)
+                    #     if is_far:
+                    min_dist_coords[sl_idx, bundle_idx, 0] =\
+                        np.argmin(dist[0], 0)[0]
+                    min_dist_coords[sl_idx, bundle_idx, 1] =\
+                        np.argmin(dist[1], 0)[0]
+                    streamlines_in_bundles[sl_idx, bundle_idx] =\
+                        fiber_probabilities[sl_idx]
             self.logger.info(
                 (f"{np.sum(streamlines_in_bundles[:, bundle_idx] > 0)} "
                  "streamlines selected with waypoint ROIs"))
