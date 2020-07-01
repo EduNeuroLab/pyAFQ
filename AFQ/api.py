@@ -1129,10 +1129,10 @@ class AFQ(object):
 
         for scalar in self.scalars:
             fname = self._get_fname(
-                    row,
-                    f'_{scalar}_profile_plots.png',
-                    include_track=True,
-                    include_seg=True)
+                row,
+                f'_{scalar}_profile_plots.png',
+                include_track=True,
+                include_seg=True)
 
             viz.visualize_tract_profiles(tract_profiles,
                                          scalar=scalar,
