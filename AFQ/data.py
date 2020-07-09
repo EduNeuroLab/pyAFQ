@@ -932,7 +932,7 @@ def _apply_mask(template_img, resolution=1):
         Unmasked template
     resolution : int, optional
         Resolution of mask. Default: 1
-    
+
     Returns
     -------
     Masked template as nib.Nifti1Image
