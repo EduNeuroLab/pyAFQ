@@ -595,7 +595,7 @@ class Segmentation:
 
                 self.logger.info("After filtering "
                                  f"{len(select_sl)} streamlines")
-            
+
             if self.clip_edges:
                 self.logger.info("Clipping Streamlines by ROI")
                 for idx in range(len(select_sl)):
@@ -604,8 +604,8 @@ class Segmentation:
 
                     # If the point that is closest to the first ROI
                     # is the same as the point closest to the second ROI,
-                    # include the surrounding points to make a streamline. 
-                    if min0 == min1:  
+                    # include the surrounding points to make a streamline.
+                    if min0 == min1:
                         min1 = min1 + 1
                         min0 = min0 - 1
 
