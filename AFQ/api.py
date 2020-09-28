@@ -880,6 +880,7 @@ class AFQ(object):
                 self.reg_template_img.get_fdata(),
                 reg_subject_img.affine,
                 self.reg_template_img.affine)
+            aff = np.linalg.inv(aff)
             np.save(prealign_file, aff)
             meta_fname = self._get_fname(
                 row, '_prealign_from-DWI_to-MNI_xfm.json')
@@ -1206,16 +1207,14 @@ class AFQ(object):
         template_xform_file = self._get_fname(row, "_template_xform.nii.gz")
         if self.force_recompute or not op.exists(template_xform_file):
             if self.use_prealign:
-                reg_prealign_inv = np.linalg.inv(
-                    np.load(self._reg_prealign(row))
-                )
+                reg_prealign = np.load(self._reg_prealign(row))
             else:
-                reg_prealign_inv = None
+                reg_prealign = None
 
             mapping = reg.read_mapping(self._mapping(row),
                                        row['dwi_file'],
                                        self.reg_template_img,
-                                       prealign=reg_prealign_inv)
+                                       prealign=reg_prealign)
 
             template_xform = mapping.transform_inverse(
                 self.reg_template_img.get_fdata())
@@ -1228,14 +1227,13 @@ class AFQ(object):
     def _export_rois(self, row):
         if self.use_prealign:
             reg_prealign = np.load(self._reg_prealign(row))
-            reg_prealign_inv = np.linalg.inv(reg_prealign)
         else:
-            reg_prealign_inv = None
+            reg_prealign = None
 
         mapping = reg.read_mapping(self._mapping(row),
                                    row['dwi_file'],
                                    self.reg_template_img,
-                                   prealign=reg_prealign_inv)
+                                   prealign=reg_prealign)
 
         rois_dir = op.join(row['results_dir'], 'ROIs')
         os.makedirs(rois_dir, exist_ok=True)
@@ -1369,14 +1367,13 @@ class AFQ(object):
         if xform_volume or xform_color_by_volume:
             if self.use_prealign:
                 reg_prealign = np.load(self._reg_prealign(row))
-                reg_prealign_inv = np.linalg.inv(reg_prealign)
             else:
-                reg_prealign_inv = None
+                reg_prealign = None
 
             mapping = reg.read_mapping(self._mapping(row),
                                        row['dwi_file'],
                                        self.reg_template_img,
-                                       prealign=reg_prealign_inv)
+                                       prealign=reg_prealign)
 
         if xform_volume:
             if isinstance(volume, str):
