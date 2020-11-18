@@ -12,7 +12,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-import sys, os
+from _progressbars import reset_progressbars
+from plotly.io._sg_scraper import plotly_sg_scraper
+import sys
+import os
 
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(os.path.abspath('sphinxext'))
@@ -78,7 +81,7 @@ language = None
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = [
-    "examples/cloudknot_*", "examples/plot_optic_*"]
+    "examples/cloudknot_*", "examples/optic_*"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -180,10 +183,8 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
 
-from plotly.io._sg_scraper import plotly_sg_scraper
 image_scrapers = ('matplotlib', plotly_sg_scraper,)
 
-from _progressbars import reset_progressbars
 
 sphinx_gallery_conf = {
      # path to your examples scripts
@@ -198,5 +199,3 @@ sphinx_gallery_conf = {
 autoapi_type = 'python'
 autoapi_dirs = ['../../AFQ']
 autoapi_ignore = ['*test*', '*_fixes*', '*version*', 'pyAFQ', 'License']
-
-
