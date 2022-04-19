@@ -29,6 +29,10 @@ import AFQ.models.dti as dti
 import AFQ.segmentation as seg
 from AFQ.utils.volume import transform_inverse_roi
 
+from trx_file_memmap import load as load_trx
+from trx_file_memmap import save as save_trx
+from trx_file_memmap import TrxFile
+
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -190,8 +194,9 @@ for bundle in bundles:
                              img,
                              Space.VOX)
     sft.to_rasmm()
-    save_tractogram(sft, op.join(working_dir, f'{bundle}_afq.trk'),
-                    bbox_valid_check=False)
+    trx = TrxFile.from_sft(sft)
+
+    save_trx(trx, op.join(working_dir, f'{bundle}_afq.trx'))
 
 
 ##########################################################################
@@ -204,8 +209,9 @@ for bundle in bundles:
 
 print("Extracting tract profiles...")
 for bundle in bundles:
-    sft = load_tractogram(op.join(working_dir, f'{bundle}_afq.trk'),
-                          img, to_space=Space.VOX)
+    trx = load_trx(op.join(working_dir, f'{bundle}_afq.trx'))
+    sft = trx.to_sft()
+    sft.to_vox()
     fig, ax = plt.subplots(1)
     weights = gaussian_weights(sft.streamlines)
     profile = afq_profile(FA_data, sft.streamlines,
