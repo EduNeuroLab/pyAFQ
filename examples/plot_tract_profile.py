@@ -29,9 +29,9 @@ import AFQ.models.dti as dti
 import AFQ.segmentation as seg
 from AFQ.utils.volume import transform_inverse_roi
 
-from trx_file_memmap import load as load_trx
-from trx_file_memmap import save as save_trx
-from trx_file_memmap import TrxFile
+from trx.trx_file_memmap import load as load_trx
+from trx.trx_file_memmap import save as save_trx
+from trx.trx_file_memmap import TrxFile
 
 import logging
 logging.basicConfig(level=logging.INFO)
