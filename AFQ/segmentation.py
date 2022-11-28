@@ -6,6 +6,11 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.stats import zscore
 
+from sklearn.manifold import TSNE
+from sklearn.cluster import DBSCAN
+from dipy.segment.metric import mdf
+import pandas as pd
+
 import nibabel as nib
 from tqdm.auto import tqdm
 
@@ -1055,7 +1060,7 @@ class Segmentation:
         return fiber_groups
 
 
-def clean_bundle(tg, n_points=100, clean_rounds=5, distance_threshold=3,
+def clean_bundle(tg, technique="standard", n_points=100, clean_rounds=5, distance_threshold=3,
                  length_threshold=4, min_sl=20, stat='mean',
                  return_idx=False):
     """
@@ -1094,71 +1099,122 @@ def clean_bundle(tg, n_points=100, clean_rounds=5, distance_threshold=3,
     that have a Mahalanobis distance smaller than `clean_threshold` from
     the mean of each one of the nodes.
     """
-    # Convert string to callable, if that's what you got.
-    if isinstance(stat, str):
-        stat = getattr(np, stat)
-    # We don't even bother if there aren't enough streamlines:
-    if len(tg.streamlines) < min_sl:
-        if return_idx:
-            return tg, np.arange(len(tg.streamlines))
+    if technique.lower() == "fiberneat":
+        bundle = _resample_tg(tg, 20)
+
+        n = len(bundle)
+        if n <= min_sl:
+            idx = np.arange(n)
         else:
-            return tg
+            dist = np.zeros((n, n))
 
-    # Resample once up-front:
-    fgarray = _resample_tg(tg, n_points)
+            for i in range(n):
 
-    # Keep this around, so you can use it for indexing at the very end:
-    idx = np.arange(len(fgarray))
-    # get lengths of each streamline
-    lengths = np.array([sl.shape[0] for sl in tg.streamlines])
-    # We'll only do this for clean_rounds
-    rounds_elapsed = 0
-    while rounds_elapsed < clean_rounds and len(tg.streamlines) > min_sl:
-        # This calculates the Mahalanobis for each streamline/node:
-        m_dist = gaussian_weights(fgarray, return_mahalnobis=True, stat=stat)
-        logger.debug(f"Shape of fgarray: {np.asarray(fgarray).shape}")
-        logger.debug(f"Shape of m_dist: {m_dist.shape}")
-        logger.debug(f"Maximum m_dist: {np.max(m_dist)}")
-        logger.debug((
-            f"Maximum m_dist for each fiber: "
-            f"{np.max(m_dist, axis=1)}"))
+                s1 = bundle[i]
 
-        length_z = zscore(lengths)
-        logger.debug(f"Shape of length_z: {length_z.shape}")
-        logger.debug(f"Maximum length_z: {np.max(length_z)}")
-        logger.debug((
-            "length_z for each fiber: "
-            f"{length_z}"))
+                for j in range(n):
 
-        if not (
-                np.any(m_dist > distance_threshold)
-                or np.any(length_z > length_threshold)):
-            break
-        # Select the fibers that have Mahalanobis smaller than the
-        # threshold for all their nodes:
-        idx_dist = np.all(m_dist < distance_threshold, axis=-1)
-        idx_len = length_z < length_threshold
-        idx_belong = np.logical_and(idx_dist, idx_len)
+                    s2 = bundle[j]
 
-        if np.sum(idx_belong) < min_sl:
-            # need to sort and return exactly min_sl:
-            idx_belong = np.argsort(np.sum(
-                m_dist, axis=-1))[:min_sl].astype(int)
+                    dist[i][j] = mdf(s1, s2)
+
+            n = len(bundle)
+            y = np.ones(n)
+
+            p = n * .1
+            if p < 5:
+                p = 5
+            elif p > 50:
+                p = 50
+
+            X_embedded = TSNE(n_components=2, init='random',
+                              metric='precomputed', perplexity=p).fit_transform(dist)
+
+            tsne_result_df = pd.DataFrame({'tsne_1': X_embedded[:, 0],
+                                           'tsne_2': X_embedded[:, 1],
+                                           'label': y})
+
+            k = 5
+
+            clustering = DBSCAN(eps=k, min_samples=2).fit(tsne_result_df)
+            l = clustering.labels_
+
+            lb = list(set(clustering.labels_))
+            big_c = 0
+            size = 0
+            for i in lb:
+                if len(bundle[l == i]) > size:
+                    big_c = i
+                    size = len(bundle[l == i])
+
+            idx = l == big_c
+    else:
+        # Convert string to callable, if that's what you got.
+        if isinstance(stat, str):
+            stat = getattr(np, stat)
+        # We don't even bother if there aren't enough streamlines:
+        if len(tg.streamlines) < min_sl:
+            if return_idx:
+                return tg, np.arange(len(tg.streamlines))
+            else:
+                return tg
+
+        # Resample once up-front:
+        fgarray = _resample_tg(tg, n_points)
+
+        # Keep this around, so you can use it for indexing at the very end:
+        idx = np.arange(len(fgarray))
+        # get lengths of each streamline
+        lengths = np.array([sl.shape[0] for sl in tg.streamlines])
+        # We'll only do this for clean_rounds
+        rounds_elapsed = 0
+        while rounds_elapsed < clean_rounds and len(tg.streamlines) > min_sl:
+            # This calculates the Mahalanobis for each streamline/node:
+            m_dist = gaussian_weights(
+                fgarray, return_mahalnobis=True, stat=stat)
+            logger.debug(f"Shape of fgarray: {np.asarray(fgarray).shape}")
+            logger.debug(f"Shape of m_dist: {m_dist.shape}")
+            logger.debug(f"Maximum m_dist: {np.max(m_dist)}")
             logger.debug((
-                f"At rounds elapsed {rounds_elapsed}, "
-                "minimum streamlines reached"))
-        else:
-            idx_removed = idx_belong == 0
-            logger.debug((
-                f"Rounds elapsed: {rounds_elapsed}, "
-                f"num removed: {np.sum(idx_removed)}"))
-            logger.debug(f"Removed indicies: {np.where(idx_removed)[0]}")
+                f"Maximum m_dist for each fiber: "
+                f"{np.max(m_dist, axis=1)}"))
 
-        # Update by selection:
-        idx = idx[idx_belong]
-        fgarray = fgarray[idx_belong]
-        lengths = lengths[idx_belong]
-        rounds_elapsed += 1
+            length_z = zscore(lengths)
+            logger.debug(f"Shape of length_z: {length_z.shape}")
+            logger.debug(f"Maximum length_z: {np.max(length_z)}")
+            logger.debug((
+                "length_z for each fiber: "
+                f"{length_z}"))
+
+            if not (
+                    np.any(m_dist > distance_threshold)
+                    or np.any(length_z > length_threshold)):
+                break
+            # Select the fibers that have Mahalanobis smaller than the
+            # threshold for all their nodes:
+            idx_dist = np.all(m_dist < distance_threshold, axis=-1)
+            idx_len = length_z < length_threshold
+            idx_belong = np.logical_and(idx_dist, idx_len)
+
+            if np.sum(idx_belong) < min_sl:
+                # need to sort and return exactly min_sl:
+                idx_belong = np.argsort(np.sum(
+                    m_dist, axis=-1))[:min_sl].astype(int)
+                logger.debug((
+                    f"At rounds elapsed {rounds_elapsed}, "
+                    "minimum streamlines reached"))
+            else:
+                idx_removed = idx_belong == 0
+                logger.debug((
+                    f"Rounds elapsed: {rounds_elapsed}, "
+                    f"num removed: {np.sum(idx_removed)}"))
+                logger.debug(f"Removed indicies: {np.where(idx_removed)[0]}")
+
+            # Update by selection:
+            idx = idx[idx_belong]
+            fgarray = fgarray[idx_belong]
+            lengths = lengths[idx_belong]
+            rounds_elapsed += 1
 
     # Select based on the variable that was keeping track of things for us:
     out = StatefulTractogram(tg.streamlines[idx], tg, Space.VOX)
