@@ -1,3 +1,5 @@
+.. _modeling:
+
 Modeling white matter
 =====================
 
