@@ -1,6 +1,6 @@
 .. _modeling:
 
-Modeling white matter
+Modeling White Matter
 =====================
 
 In order to make inferences about white matter tissue properties, we use a
