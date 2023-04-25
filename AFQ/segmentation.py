@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.stats import zscore
+from scipy.signal import find_peaks
 
 from sklearn.manifold import TSNE
 from sklearn.cluster import DBSCAN
@@ -1060,7 +1061,7 @@ class Segmentation:
         return fiber_groups
 
 
-def clean_bundle(tg, technique="standard", n_points=100, clean_rounds=5, distance_threshold=3,
+def clean_bundle(tg, technique="mahalanobis", n_points=100, clean_rounds=5, distance_threshold=3,
                  length_threshold=4, min_sl=20, stat='mean',
                  return_idx=False):
     """
@@ -1099,65 +1100,84 @@ def clean_bundle(tg, technique="standard", n_points=100, clean_rounds=5, distanc
     that have a Mahalanobis distance smaller than `clean_threshold` from
     the mean of each one of the nodes.
     """
+    # We don't even bother if there aren't enough streamlines:
+    if len(tg.streamlines) < min_sl:
+        if return_idx:
+            return tg, np.arange(len(tg.streamlines))
+        else:
+            return tg
+
     if technique.lower() == "fiberneat":
         bundle = _resample_tg(tg, 20)
-
         n = len(bundle)
-        if n <= min_sl:
-            idx = np.arange(n)
+        dist = np.zeros((n, n))
+        for i in range(n):
+            s1 = bundle[i]
+            for j in range(n):
+                s2 = bundle[j]
+                dist[i][j] = mdf(s1, s2)
+        n = len(bundle)
+        y = np.ones(n)
+
+        p = n * .1
+        if p < 5:
+            p = 5
+        elif p > 50:
+            p = 50
+
+        X_embedded = TSNE(n_components=2, init='random',
+                          metric='precomputed', perplexity=p).fit_transform(dist)
+        tsne_result_df = pd.DataFrame({'tsne_1': X_embedded[:, 0],
+                                       'tsne_2': X_embedded[:, 1],
+                                       'label': y})
+
+        k = distance_threshold
+
+        clustering = DBSCAN(eps=k, min_samples=2).fit(tsne_result_df)
+        l = clustering.labels_
+        lb = list(set(clustering.labels_))
+        big_c = 0
+        size = 0
+        for i in lb:
+            if len(bundle[l == i]) > size:
+                big_c = i
+                size = len(bundle[l == i])
+
+        idx = l == big_c
+    elif technique == "fast":
+        if len(tg) < 100:
+            continue
+        bundle = _resample_tg(tg, n_points)
+        n = len(bundle)
+        bundle_npy = np.asarray(bundle).reshape((n, -1))
+        dists = cdist(
+            bundle_npy,
+            bundle_npy, "euclidean")
+        dists = np.sqrt(dists)  # makes the distribution looks more gaussian
+        dists = (dists - np.mean(dists)) / np.std(dists)  # normalize
+        avg_dist = np.mean(np.abs(dists), axis=1).flatten()
+
+        # Here we find a good threshold for the distance
+        if n > 1000:
+            n_bins = 100
         else:
-            dist = np.zeros((n, n))
+            n_bins = 10
+        binned_avg_dist, bins = np.histogram(avg_dist, n_bins)
+        peaks = find_peaks(binned_avg_dist, prominence=10)[0]
+        if len(peaks) < 1:
+            first_peak = find_peaks(binned_avg_dist)[0][0]
+        else:
+            first_peak = peaks[0]
+        threshold = bins[first_peak]
 
-            for i in range(n):
-
-                s1 = bundle[i]
-
-                for j in range(n):
-
-                    s2 = bundle[j]
-
-                    dist[i][j] = mdf(s1, s2)
-
-            n = len(bundle)
-            y = np.ones(n)
-
-            p = n * .1
-            if p < 5:
-                p = 5
-            elif p > 50:
-                p = 50
-
-            X_embedded = TSNE(n_components=2, init='random',
-                              metric='precomputed', perplexity=p).fit_transform(dist)
-
-            tsne_result_df = pd.DataFrame({'tsne_1': X_embedded[:, 0],
-                                           'tsne_2': X_embedded[:, 1],
-                                           'label': y})
-
-            k = 5
-
-            clustering = DBSCAN(eps=k, min_samples=2).fit(tsne_result_df)
-            l = clustering.labels_
-
-            lb = list(set(clustering.labels_))
-            big_c = 0
-            size = 0
-            for i in lb:
-                if len(bundle[l == i]) > size:
-                    big_c = i
-                    size = len(bundle[l == i])
-
-            idx = l == big_c
-    else:
+        # And here we keep only streamlines
+        # whose average distance to other streamlines
+        # is below the threshold we found
+        idx = np.where(avg_dist < threshold)[0]
+    elif technique == "mahalanobis":
         # Convert string to callable, if that's what you got.
         if isinstance(stat, str):
             stat = getattr(np, stat)
-        # We don't even bother if there aren't enough streamlines:
-        if len(tg.streamlines) < min_sl:
-            if return_idx:
-                return tg, np.arange(len(tg.streamlines))
-            else:
-                return tg
 
         # Resample once up-front:
         fgarray = _resample_tg(tg, n_points)
