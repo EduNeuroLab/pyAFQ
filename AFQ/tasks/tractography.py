@@ -90,7 +90,7 @@ def export_stop_mask_pft(pve_wm, pve_gm, pve_csf):
 
 
 @pimms.calc("streamlines")
-@as_file('_tractography', include_track=True)
+@as_file('_tractography.trx', include_track=True)
 def streamlines(data_imap, seed, stop,
                 tracking_params):
     """
@@ -130,23 +130,14 @@ def streamlines(data_imap, seed, stop,
     else:
         this_tracking_params['stop_mask'] = stop
 
-    is_trx = this_tracking_params.get("trx", False)
-
-    if is_trx:
-        start_time = time()
-        dtype_dict = {'positions': np.float32, 'offsets': np.uint32}
-        lazyt = aft.track(params_file, **this_tracking_params)
-        sft = TrxFile.from_lazy_tractogram(
-            lazyt,
-            seed,
-            dtype_dict=dtype_dict)
-        n_streamlines = len(sft)
-
-    else:
-        start_time = time()
-        sft = aft.track(params_file, **this_tracking_params)
-        sft.to_vox()
-        n_streamlines = len(sft.streamlines)
+    start_time = time()
+    dtype_dict = {'positions': np.float16, 'offsets': np.uint32}
+    lazyt = aft.track(params_file, **this_tracking_params)
+    sft = TrxFile.from_lazy_tractogram(
+        lazyt,
+        seed,
+        dtype_dict=dtype_dict)
+    n_streamlines = len(sft)
 
     return sft, _meta_from_tracking_params(
         tracking_params, start_time,
@@ -206,7 +197,7 @@ def custom_tractography(bids_info, import_tract=None):
 
 
 @pimms.calc("streamlines")
-@as_file('_tractography.trk', include_track=True)
+@as_file('_tractography', include_track=True)
 def gpu_tractography(data_imap, tracking_params, seed, stop,
                      tractography_ngpus=0):
     """
